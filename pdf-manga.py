@@ -54,13 +54,13 @@ except:
     print(f"A opção \"{manga_number}\" não é valida.")
     exit()
 
-chapters_list = list_manga_chapters(manga["href"])
+chapters_list = list_manga_chapters(f"https://mangayabu.top/manga/{manga['slug']}")
 
 if( chapters_list == None ):
     print("Não foi possivel acessar o mangayabu corretamente, fechando o programa...")
     exit()
 
-print("\n".join([f"({n}): {chapter['title']}" for n, chapter in enumerate(chapters_list)]))
+print("\n".join([f"({n}): {manga['title']} #{chapter['num']}" for n, chapter in enumerate(chapters_list)]))
 
 chapter_number = input("Selecione o(s) capitulo(s) que você quer baixar(utilize o numero em parenteses): ")
 
@@ -81,21 +81,21 @@ chapter_bar = ProgressBar(len(to_install))
 
 for chapter in to_install:
 
-    images = get_chapter_images_url(chapter["href"])
+    images = get_chapter_images_url(f"https://mangayabu.top/?p={chapter['id']}")
 
     if( images ):
 
         image_bar = ProgressBar(len(images))
 
-        pdf = asyncio.get_event_loop().run_until_complete(get_chapter_images(images, chapter["title"], image_bar, chapter_bar))
+        pdf = asyncio.get_event_loop().run_until_complete(get_chapter_images(images, manga["title"], chapter["num"], image_bar, chapter_bar))
 
         if( options.make_folder ):
-            pdf[0].save(f"{os.path.join(path, pathvalidate.sanitize_filepath(manga['title']), pathvalidate.sanitize_filename(chapter['title']))}.pdf", save_all = True, append_images = pdf[1:])
+            pdf[0].save(f"{os.path.join(path, pathvalidate.sanitize_filepath(manga['title']), pathvalidate.sanitize_filename('{} #{}'.format(manga['title'], chapter['num'])))}.pdf", save_all = True, append_images = pdf[1:])
         else:
-            pdf[0].save(f"{os.path.join(path, pathvalidate.sanitize_filename(chapter['title']))}.pdf", save_all = True, append_images = pdf[1:])
+            pdf[0].save(f"{os.path.join(path, pathvalidate.sanitize_filename('{} #{}'.format(manga['title'], chapter['num'])))}.pdf", save_all = True, append_images = pdf[1:])
 
     clear()
     
     chapter_bar.add()
-    print(f"Capitulo: {chapter['title']}")
+    print(f"Capitulo: {manga['title']} #{chapter['num']}")
     chapter_bar.show()

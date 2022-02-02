@@ -1,5 +1,5 @@
 import requests.packages.urllib3.util.connection 
-import requests, urllib, re, random, aiohttp, asyncio, io
+import requests, re, aiohttp, asyncio, io, json
 
 from bs4    import BeautifulSoup
 from socket import AF_INET
@@ -13,17 +13,16 @@ REGEX_MULTIPLE_CHAPTERS = "^(\d+,?)+$"
 REGEX_RANGE_CHAPTERS = "(\d+)-(\d+)"
 
 def list_mangas(manga_name):
-    manga_name = urllib.parse.quote(manga_name)
     manga_list = []
 
-    manga_list_page = requests.get(f"https://mangayabu.top/?s={manga_name}")
+    all_mangas = requests.get("https://mangayabu.top/api/show3.php")
 
-    if( manga_list_page.ok ):
-        soup = BeautifulSoup(manga_list_page.text, "html.parser")
+    if( all_mangas.ok ):
+        all_mangas_json = all_mangas.json()
 
-        for a in soup.find_all("a"):
-            if( a.get("href", "").startswith("https://mangayabu.top/manga/") ):
-                manga_list.append(a)
+        for manga in all_mangas_json:
+            if( manga_name.lower() in manga["title"].lower() ):
+                manga_list.append(manga)
     else:
         return None
 
@@ -31,14 +30,11 @@ def list_mangas(manga_name):
 
 def list_manga_chapters(manga_link):
     manga_chapters = requests.get(manga_link)
-    chapters_list = []
 
     if( manga_chapters.ok ):
         soup = BeautifulSoup(manga_chapters.text, "html.parser")
 
-        for a in soup.find_all("a"):
-            if( a.get("href", "").startswith("https://mangayabu.top/ler/") ):
-                chapters_list.append(a)
+        chapters_list = json.loads(soup.find_all("script", attrs={"id":"manga-info"})[0].contents[0])['allposts']
 
         chapters_list.reverse()
     else:
@@ -76,25 +72,31 @@ def get_manga_selection(chapters_list, selection):
     return to_install
 
 def get_chapter_images_url(url):
-    page = requests.get(f"{url}?cachebuster={random.random()}")
+    page = requests.get(url)
     images_url = []
 
     if( page.ok ):
         soup = BeautifulSoup(page.text, "html.parser")
 
-        for img in soup.find_all("img"):
-            if( img.get("class") ):
-                objclass = img.get("class")
-                chapter_images = soup.find_all('img', attrs = {'class': objclass})
-                images_url = [image["src"] for image in chapter_images]
+        for script in soup.find_all("script"):
+            if( script.contents and "hatsuna" in script.contents[0] ):
+                vars = script.contents[0].replace("var", "").replace(" ", "").replace("true", "True").split(";")[:-1]
+                vars = {var.split("=")[0]: var.split("=")[1] for var in vars}
                 break
+
+        images_api = requests.get("https://mangayabu.top/chapter.php", params = {"id": vars["hash"], "hatsuna": vars["hatsuna"]})
+
+        if( images_api.ok ):
+            images_url = images_api.json()["Miko"]
+        else:
+            return None
 
     else:
         return None
 
     return images_url
 
-async def get_chapter_image(session, url, chapter_title, progress_bar_images, progress_bar_chapters):
+async def get_chapter_image(session, url, manga_title, chapter_title, progress_bar_images, progress_bar_chapters):
     r = await session.get(url)
     content = await r.read()
 
@@ -110,15 +112,15 @@ async def get_chapter_image(session, url, chapter_title, progress_bar_images, pr
 
     print(f"Baixado: {url}")
     progress_bar_images.show()
-    print(f"Capitulo: {chapter_title}")
+    print(f"Capitulo: {manga_title} #{chapter_title}")
     progress_bar_chapters.show()
 
     return i
 
-async def get_chapter_images(images, chapter_title, progress_bar_images, progress_bar_chapters):
+async def get_chapter_images(images, manga_title, chapter_title, progress_bar_images, progress_bar_chapters):
     session = aiohttp.ClientSession()
 
-    tasks = [asyncio.ensure_future(get_chapter_image(session, image, chapter_title, progress_bar_images, progress_bar_chapters)) for image in images]
+    tasks = [asyncio.ensure_future(get_chapter_image(session, image, manga_title, chapter_title, progress_bar_images, progress_bar_chapters)) for image in images]
 
     r = await asyncio.gather(*tasks)
 
