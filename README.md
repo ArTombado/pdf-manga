@@ -53,11 +53,11 @@ Exemplo:
 ```todos```: Baixa todos os capítulos disponíveis.
 
 ```
-(0): Kimetsu no Yaiba – CapÃ­tulo 01
-(1): Kimetsu no Yaiba – CapÃ­tulo 02
-(2): Kimetsu no Yaiba – CapÃ­tulo 03
-(3): Kimetsu no Yaiba – CapÃ­tulo 04
-(4): Kimetsu no Yaiba – CapÃ­tulo 05
+(0): Kimetsu no Yaiba #01
+(1): Kimetsu no Yaiba #02
+(2): Kimetsu no Yaiba #03
+(3): Kimetsu no Yaiba #04
+(4): Kimetsu no Yaiba #05
 ...
 Selecione o(s) capitulo(s) que você quer baixar(utilize o numero em parenteses): 0-3
 ```
