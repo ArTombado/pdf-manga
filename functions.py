@@ -103,6 +103,7 @@ async def get_chapter_image(session, url, manga_title, chapter_title, progress_b
     try:
         i = Image.open(io.BytesIO(content))
         i.load()
+        i = i.convert("RGB")
     except:
         return None
 
