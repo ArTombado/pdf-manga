@@ -127,10 +127,6 @@ async def get_chapter_images(images, manga_title, chapter_title, progress_bar_im
 
     await session.close()
 
-    images = []
-
-    for e in r:
-        if( e ):
-            images.append(e)
+    images = [e for e in r if( e != None )]
 
     return images
