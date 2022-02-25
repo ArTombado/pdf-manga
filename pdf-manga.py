@@ -1,9 +1,6 @@
 import asyncio, pathvalidate, os, argparse
 
 from functions import *
-from util      import *
-
-from PIL import Image
 
 path = ""
 
