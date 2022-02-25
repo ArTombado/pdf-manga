@@ -1,7 +1,9 @@
-import asyncio, pathvalidate, os, sys, argparse
+import asyncio, pathvalidate, os, argparse
 
 from functions import *
-from util import *
+from util      import *
+
+from PIL import Image
 
 path = ""
 
@@ -40,7 +42,7 @@ elif( manga_list == [] ):
     print("Não foi possivel encontrar este mangá.")
     exit()
 
-print("\n".join([f"({n}): {manga['title']}" for n, manga in enumerate(manga_list)]))
+print("\n".join(tuple(f"({n}): {manga['title']}" for n, manga in enumerate(manga_list))))
 
 manga_number = input("Escolha qual desses mangás você quer baixar(digite o numero em parenteses): ")
 
@@ -60,7 +62,7 @@ if( chapters_list == None ):
     print("Não foi possivel acessar o mangayabu corretamente, fechando o programa...")
     exit()
 
-print("\n".join([f"({n}): {manga['title']} #{chapter['num']}" for n, chapter in enumerate(chapters_list)]))
+print("\n".join(tuple(f"({n}): {manga['title']} #{chapter['num']}" for n, chapter in enumerate(chapters_list))))
 
 chapter_number = input("Selecione o(s) capitulo(s) que você quer baixar(utilize o numero em parenteses): ")
 
@@ -77,25 +79,4 @@ if( to_install == None ):
 if( options.make_folder ):
     os.mkdir(os.path.join(path, pathvalidate.sanitize_filepath(manga['title'])))
 
-chapter_bar = ProgressBar(len(to_install))
-
-for chapter in to_install:
-
-    images = get_chapter_images_url(f"https://mangayabu.top/?p={chapter['id']}")
-
-    if( images ):
-
-        image_bar = ProgressBar(len(images))
-
-        pdf = asyncio.get_event_loop().run_until_complete(get_chapter_images(images, manga["title"], chapter["num"], image_bar, chapter_bar))
-
-        if( options.make_folder ):
-            pdf[0].save(f"{os.path.join(path, pathvalidate.sanitize_filepath(manga['title']), pathvalidate.sanitize_filename('{} #{}'.format(manga['title'], chapter['num'])))}.pdf", save_all = True, append_images = pdf[1:])
-        else:
-            pdf[0].save(f"{os.path.join(path, pathvalidate.sanitize_filename('{} #{}'.format(manga['title'], chapter['num'])))}.pdf", save_all = True, append_images = pdf[1:])
-
-    clear()
-    
-    chapter_bar.add()
-    print(f"Capitulo: {manga['title']} #{chapter['num']}")
-    chapter_bar.show()
+asyncio.get_event_loop().run_until_complete(get_chapters(to_install, manga["title"], options.make_folder, path))

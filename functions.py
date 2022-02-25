@@ -1,10 +1,10 @@
 import requests.packages.urllib3.util.connection 
-import requests, re, aiohttp, asyncio, io, json
+import requests, re, aiohttp, asyncio, io, json, pathvalidate, os, shutil, gc
 
 from bs4    import BeautifulSoup
 from socket import AF_INET
 from PIL    import Image
-from util   import clear
+from util   import *
 
 # force ipv4
 requests.packages.urllib3.util.connection.allowed_gai_family = lambda: AF_INET
@@ -96,9 +96,11 @@ def get_chapter_images_url(url):
 
     return images_url
 
-async def get_chapter_image(session, url, manga_title, chapter_title, progress_bar_images, progress_bar_chapters):
+async def get_chapter_image(session, url, manga_title, chapter_title, path, make_folder, progress_bar_images_dict):
     r = await session.get(url)
     content = await r.read()
+
+    dir_name = pathvalidate.sanitize_filepath(os.path.join(path, manga_title if( make_folder ) else "", "temp", chapter_title, url.split("/")[-1]), platform = "auto")
 
     try:
         i = Image.open(io.BytesIO(content))
@@ -107,26 +109,80 @@ async def get_chapter_image(session, url, manga_title, chapter_title, progress_b
     except:
         return None
 
-    clear()
+    i.save(dir_name)
 
-    progress_bar_images.add()
+    del i
 
-    print(f"Baixado: {url}")
-    progress_bar_images.show()
-    print(f"Capitulo: {manga_title} #{chapter_title}")
-    progress_bar_chapters.show()
+    gc.collect()
 
-    return i
+    progress_bar_images_dict[f"{manga_title} #{chapter_title}"].add()
 
-async def get_chapter_images(images, manga_title, chapter_title, progress_bar_images, progress_bar_chapters):
-    session = aiohttp.ClientSession()
+    return dir_name
 
-    tasks = [asyncio.ensure_future(get_chapter_image(session, image, manga_title, chapter_title, progress_bar_images, progress_bar_chapters)) for image in images]
+async def get_chapter_images(session, images, manga_title, chapter_title, make_folder, path, progress_bar_images_dict, progress_bar_chapters):
+
+    os.mkdir(os.path.join(path, manga_title if( make_folder ) else "", "temp", chapter_title))
+
+    tasks = tuple(asyncio.ensure_future(get_chapter_image(session, image, manga_title, chapter_title, path, make_folder, progress_bar_images_dict)) for image in images)
 
     r = await asyncio.gather(*tasks)
 
-    await session.close()
+    images = tuple(e for e in r if( e != None ))
 
-    images = [e for e in r if( e != None )]
+    progress_bar_chapters.add()
 
     return images
+
+async def get_chapters(chapters_list, manga_title, make_folder, path):
+    session = aiohttp.ClientSession()
+
+    os.mkdir(os.path.join(path, manga_title if( make_folder ) else "", "temp"))
+
+    tasks = []
+
+    images_bars = {}
+    progress_bar_chapters = ProgressBar(len(chapters_list))
+
+    for chapter in chapters_list:
+
+        images = get_chapter_images_url(f"https://mangayabu.top/?p={chapter['id']}")
+
+        if( images ):
+            images_bars[f"{manga_title} #{chapter['num']}"] = ProgressBar(len(images))
+
+            tasks.append(asyncio.ensure_future(get_chapter_images(session, images, manga_title, chapter["num"], make_folder, path, images_bars, progress_bar_chapters)))
+
+    tasks.append(asyncio.ensure_future(print_bars(tasks, progress_bar_chapters, images_bars)))
+
+    chapters_filenames = await asyncio.gather(*tasks)
+
+    chapters_filenames = chapters_filenames[:-1]
+
+    await session.close()
+    
+    gc.collect()
+    
+    for n, filenames in enumerate(chapters_filenames):
+        pdf = tuple(Image.open(filename) for filename in filenames)
+
+        pdf[0].save(f"{os.path.join(path, pathvalidate.sanitize_filepath(manga_title) if( make_folder ) else '', pathvalidate.sanitize_filename('{} #{}'.format(manga_title, chapters_list[n]['num'])))}.pdf", save_all = True, append_images = pdf[1:])
+
+        del pdf
+        gc.collect()
+
+    shutil.rmtree(os.path.join(path, manga_title if( make_folder ) else "", "temp"))
+
+async def print_bars(tasks, progress_bar_chapters, progress_bar_images_dict):
+    while( True ):
+        clear()
+
+        for chapter in progress_bar_images_dict:
+            print(f"{chapter}: {progress_bar_images_dict[chapter].show()}")
+
+        print()
+
+        print(f"Progresso: {progress_bar_chapters.show()}")
+
+        if( all([task.done() for task in tasks[:-1]]) ): break
+
+        await asyncio.sleep(5)

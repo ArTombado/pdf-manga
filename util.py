@@ -14,4 +14,4 @@ class ProgressBar:
 
     def show(self):
         percentage = self.value * 100 / self.max_value
-        print(f"[{'=' * (int(percentage) - 1)}{'>' if percentage else ''}{'-' * (100 - int(percentage))}] {int(percentage)}%")
+        return f"[{'=' * (int(percentage) - 1)}{'>' if percentage else ''}{'-' * (100 - int(percentage))}] {int(percentage)}%"
