@@ -77,3 +77,5 @@ if( options.make_folder ):
     os.mkdir(os.path.join(path, pathvalidate.sanitize_filepath(manga['title'])))
 
 asyncio.get_event_loop().run_until_complete(get_chapters(to_install, manga["title"], options.make_folder, path))
+
+print("Todos os mangás foram baixados com sucesso!")

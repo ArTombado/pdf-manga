@@ -161,6 +161,10 @@ async def get_chapters(chapters_list, manga_title, make_folder, path):
     await session.close()
     
     gc.collect()
+
+    clear()
+
+    progress_bar_pdfs = ProgressBar(len(chapters_filenames))
     
     for n, filenames in enumerate(chapters_filenames):
         pdf = tuple(Image.open(filename) for filename in filenames)
@@ -170,7 +174,16 @@ async def get_chapters(chapters_list, manga_title, make_folder, path):
         del pdf
         gc.collect()
 
+        progress_bar_pdfs.add()
+
+        clear()
+
+        print("Gerando pdfs...")
+        print(f"Progresso: {progress_bar_pdfs.show()}")
+
     shutil.rmtree(os.path.join(path, manga_title if( make_folder ) else "", "temp"))
+
+    clear()
 
 async def print_bars(tasks, progress_bar_chapters, progress_bar_images_dict):
     while( True ):
