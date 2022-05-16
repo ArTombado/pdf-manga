@@ -1,5 +1,5 @@
 import requests.packages.urllib3.util.connection 
-import requests, re, aiohttp, asyncio, io, json, pathvalidate, os, shutil, gc
+import requests, re, aiohttp, asyncio, io, json, pathvalidate, os, shutil, gc, time
 
 from bs4    import BeautifulSoup
 from socket import AF_INET
@@ -149,32 +149,34 @@ async def get_chapters(chapters_list, manga_title, make_folder, path):
 
     tasks = []
 
-    images_bars = {}
     progress_bar_chapters = ProgressBar(len(chapters_list))
+    chapters_filenames = []
 
-    for chapter in chapters_list:
+    for i in range(0, len(chapters_list), 5):
+        images_bars = {}
 
-        images = get_chapter_images_url(f"https://mangayabu.top/?p={chapter['id']}")
+        for chapter in chapters_list[i : i + 5]:
 
-        if( images ):
-            images_bars[f"{manga_title} #{chapter['num']}"] = ProgressBar(len(images))
+            images = get_chapter_images_url(f"https://mangayabu.top/?p={chapter['id']}")
 
-            tasks.append(asyncio.ensure_future(get_chapter_images(session, images, manga_title, chapter["num"], make_folder, path, images_bars, progress_bar_chapters)))
+            if( images ):
+                images_bars[f"{manga_title} #{chapter['num']}"] = ProgressBar(len(images))
 
-    tasks.append(asyncio.ensure_future(print_bars(tasks, progress_bar_chapters, images_bars)))
+                tasks.append(asyncio.ensure_future(get_chapter_images(session, images, manga_title, chapter["num"], make_folder, path, images_bars, progress_bar_chapters)))
 
-    chapters_filenames = await asyncio.gather(*tasks)
+        results = await asyncio.gather(*(tasks[i : i + 5]), asyncio.ensure_future(print_bars(tasks[i : i + 5], progress_bar_chapters, images_bars)))
+        chapters_filenames += results[:-1]
 
-    chapters_filenames = chapters_filenames[:-1]
+        time.sleep(10)
 
     await session.close()
-    
+
     gc.collect()
 
     clear()
 
     progress_bar_pdfs = ProgressBar(len(chapters_filenames))
-    
+
     for n, filenames in enumerate(chapters_filenames):
         pdf = tuple(Image.open(filename) for filename in filenames)
 
@@ -205,6 +207,6 @@ async def print_bars(tasks, progress_bar_chapters, progress_bar_images_dict):
 
         print(f"Progresso: {progress_bar_chapters.show()}")
 
-        if( all([task.done() for task in tasks[:-1]]) ): break
+        if( all([task.done() for task in tasks]) ): break
 
         await asyncio.sleep(5)
