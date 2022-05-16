@@ -201,7 +201,7 @@ async def print_bars(tasks, progress_bar_chapters, progress_bar_images_dict):
         clear()
 
         for chapter in progress_bar_images_dict:
-            print(f"{chapter}: {progress_bar_images_dict[chapter].show()}")
+            print(f"{chapter}: {(max([len(c) for c in progress_bar_images_dict]) - len(chapter)) * ' '}{progress_bar_images_dict[chapter].show()}")
 
         print()
 
