@@ -37,10 +37,19 @@ def list_manga_chapters(manga_link):
         chapters_list = json.loads(soup.find_all("script", attrs={"id":"manga-info"})[0].contents[0])['allposts']
 
         chapters_list.reverse()
+
+        chapters_list_names = []
+        chapters_list_final = []
+
+        for chapter in chapters_list:
+            if( chapter["num"] in chapters_list_names ): continue
+
+            chapters_list_names.append(chapter["num"])
+            chapters_list_final.append(chapter)
     else:
         return None
 
-    return chapters_list
+    return chapters_list_final
 
 def get_manga_selection(chapters_list, selection):
 
