@@ -87,18 +87,11 @@ def get_chapter_images_url(url):
     if( page.ok ):
         soup = BeautifulSoup(page.text, "html.parser")
 
-        for script in soup.find_all("script"):
-            if( script.contents and "hatsuna" in script.contents[0] ):
-                vars = script.contents[0].replace("var", "").replace(" ", "").replace("true", "True").split(";")[:-1]
-                vars = {var.split("=")[0]: var.split("=")[1] for var in vars}
-                break
+        image_id = 0
 
-        images_api = requests.get("https://mangayabu.top/chapter.php", params = {"id": vars["hash"], "hatsuna": vars["hatsuna"]})
-
-        if( images_api.ok ):
-            images_url = images_api.json()["Miko"]
-        else:
-            return None
+        while( soup.find_all("img", attrs={"id": str(image_id)}) != [] ):
+            images_url.append(soup.find_all("img", attrs={"id": str(image_id)})[0]["data-src"])
+            image_id += 1
 
     else:
         return None
@@ -157,7 +150,7 @@ async def get_chapters(chapters_list, manga_title, make_folder, path):
 
         for chapter in chapters_list[i : i + 5]:
 
-            images = get_chapter_images_url(f"https://mangayabu.top/?p={chapter['id']}")
+            images = get_chapter_images_url(chapter["id"])
 
             if( images ):
                 images_bars[f"{manga_title} #{chapter['num']}"] = ProgressBar(len(images))
