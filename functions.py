@@ -90,7 +90,7 @@ def get_chapter_images_url(url):
         image_id = 0
 
         while( soup.find_all("img", attrs={"id": str(image_id)}) != [] ):
-            images_url.append(soup.find_all("img", attrs={"id": str(image_id)})[0]["data-src"])
+            images_url.append(soup.find_all("img", attrs={"id": str(image_id)})[0]["src"])
             image_id += 1
 
     else:
@@ -150,7 +150,7 @@ async def get_chapters(chapters_list, manga_title, make_folder, path):
 
         for chapter in chapters_list[i : i + 5]:
 
-            images = get_chapter_images_url(chapter["id"])
+            images = get_chapter_images_url(chapter["chapters"][0]["id"])
 
             if( images ):
                 images_bars[f"{manga_title} #{chapter['num']}"] = ProgressBar(len(images))
